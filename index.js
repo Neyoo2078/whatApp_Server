@@ -47,8 +47,9 @@ const io = new Server(server, {
 global.onlineUsers = new Map();
 io.on('connection', (socket) => {
   global.chatSocket = socket;
+
   socket.on('join_room', (userId) => {
-    onlineUsers.set(userId, socket.id);
+    onlineUsers.set(userId);
 
     socket.broadcast.emit('online_users', {
       onlineUser: Array.from(onlineUsers.keys()),
