@@ -37,7 +37,10 @@ mongoose
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.IO_ORIGIN,
+    origin: process.env.IO_ORIGIN || 'http://localhost:3000', // Replace with your frontend URL
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['my-custom-header'],
+    credentials: true,
   },
 });
 
