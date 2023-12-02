@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
-
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
 import messageRoute from './Routes/MessagesRoute.js';
@@ -21,10 +21,19 @@ const server = app.listen(5000, () => {
 });
 
 const CONNECTION_URL = process.env.MONGODB_URI;
-
+console.log({ CONNECTION_URL });
 app.use('/image', messageRoute);
 app.use('/audio', audioRoute);
 app.use('/generate', tokenRoute);
+
+mongoose
+  .connect(CONNECTION_URL, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('mongoose running and connected on port 5000');
+  })
+  .catch((err) => {
+    console.log(err.message);
+  });
 
 const io = new Server(server, {
   cors: {
@@ -38,29 +47,28 @@ const io = new Server(server, {
 global.onlineUsers = new Map();
 io.on('connection', (socket) => {
   global.chatSocket = socket;
-  console.log('server connection');
+
   socket.on('join_room', (userId) => {
-    onlineUsers.set(userId, socket.id);
+    onlineUsers.set(userId);
     console.log({ online: onlineUsers });
     socket.broadcast.emit('online_users', {
       onlineUser: Array.from(onlineUsers.keys()),
     });
   });
 
-  socket.on('send_msg', (data) => {
+  socket.on('send-msg', (data) => {
     const sendUserSocket = onlineUsers.get(data.receiverId);
     console.log({ data });
     console.log({ sendUserSocket });
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit('recieve-msg', {
-        senderId: data.senderId,
+        senderId: data.from,
         message: data.message,
         messageStatus: data.messageStatus,
         messageType: data.messageType,
       });
     }
   });
-
   socket.on('Sign_out', (id) => {
     console.log({ deleteId: id });
     onlineUsers.delete(id);
@@ -101,13 +109,6 @@ io.on('connection', (socket) => {
     const sendUserSocket = onlineUsers.get(data.to);
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit('end_voice_call');
-    }
-  });
-  socket.on('end_v_call', (data) => {
-    console.log('we got here');
-    const sendUserSocket = onlineUsers.get(data.to);
-    if (sendUserSocket) {
-      socket.to(sendUserSocket).emit('end_video_call');
     }
   });
   socket.on('reject-video-call', (data) => {
